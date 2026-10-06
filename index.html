@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Analizador de Ajedrez con IA (Chess.com & Lichess)</title>
   
-  <!-- CSS: Tailwind CSS y Chessboardjs -->
+  <!-- CSS: Tailwind CSS y Chessboard.js -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
   
@@ -69,7 +69,9 @@
         
         <div>
           <label class="block text-xs text-slate-400 mb-1">Clave API de Gemini:</label>
-          <input type="password" id="apiKey" value="AQ.Ab8RN6KTGfOrdOaE-SFDmULLKu44GLID1KjR7Tv8LuHlkZ_SHw" 
+          <input type="password" id="apiKey" 
+                 value="AQ.Ab8RN6KTGfOrdOaE-SFDmULLKu44GLID1KjR7Tv8LuHlkZ_SHw"
+                 placeholder="Pega tu clave de API aquí" 
                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
         </div>
 
@@ -97,7 +99,17 @@
     let moveHistory = [];
     let currentMoveIndex = -1;
 
-    // Inicializar tablero visual al cargar
+    // Lista priorizada de modelos para evitar bloqueos por alta demanda
+    const MODELOS_IA = [
+      'gemini-2.5-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-flash-lite'
+    ];
+
+    // Clave API por defecto integrada
+    const API_KEY_DEFAULT = "AQ.Ab8RN6KTGfOrdOaE-SFDmULLKu44GLID1KjR7Tv8LuHlkZ_SHw";
+
+    // Inicializar tablero visual al cargar la página
     $(document).ready(function() {
       board = Chessboard('board', {
         position: 'start',
@@ -106,245 +118,149 @@
     });
 
     // 1. Cargar Partida (Chess.com o Lichess)
-async function cargarPartida() {
-  const urlInput = document.getElementById('gameUrl').value.trim();
-  if (!urlInput) return alert("Por favor ingresa un enlace de Chess.com o Lichess.");
+    async function cargarPartida() {
+      const urlInput = document.getElementById('gameUrl').value.trim();
+      if (!urlInput) return alert("Por favor ingresa un enlace de Chess.com o Lichess.");
 
-  const aiOutput = document.getElementById('aiOutput');
-  aiOutput.innerText = "⏳ Obteniendo PGN y cargando la partida...";
+      const aiOutput = document.getElementById('aiOutput');
+      aiOutput.innerText = "⏳ Obteniendo PGN y cargando la partida...";
 
-  let pgnText = "";
+      let pgnText = "";
 
-  try {
-    if (urlInput.includes("chess.com")) {
-      // Extraer tipo (live o daily) e ID de la partida
-      const match = urlInput.match(/chess\.com\/game\/(live|daily)\/(\d+)/);
-      if (!match) {
-        throw new Error("Formato de URL no válido. Debe ser similar a:\nhttps://www.chess.com/game/live/184878669530");
-      }
-      
-      const tipoPartida = match[1]; // live o daily
-      const gameId = match[2];     // Ej: 184878669530
-
-      // Paso A: Obtener el callback de la partida mediante Proxy CORS para saber el usuario y la fecha
-      const callbackUrl = `https://www.chess.com/callback/${tipoPartida}/game/${gameId}`;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(callbackUrl)}`;
-      
-      const callbackRes = await fetch(proxyUrl);
-      if (!callbackRes.ok) throw new Error("No se pudieron obtener los datos iniciales de la partida desde Chess.com.");
-      
-      const gameData = await callbackRes.json();
-      
-      // Si la respuesta del callback incluye directamente el PGN en los datos:
-      if (gameData.game && gameData.game.pgn) {
-        pgnText = gameData.game.pgn;
-      } else if (gameData.game && gameData.game.pgnHeaders) {
-        // Paso B: Si no está completo, buscamos en el archivo mensual del jugador
-        const whiteUser = gameData.game.pgnHeaders.White.toLowerCase();
-        const dateParts = gameData.game.pgnHeaders.Date.split('.'); // Formato "YYYY.MM.DD"
-        const year = dateParts[0];
-        const month = dateParts[1].padStart(2, '0');
-
-        // La PubAPI de Chess.com para archivos mensuales sí permite CORS directo
-        const archiveUrl = `https://api.chess.com/pub/player/${whiteUser}/games/${year}/${month}`;
-        const archiveRes = await fetch(archiveUrl);
-        if (!archiveRes.ok) throw new Error("No se pudo acceder al archivo de partidas del jugador.");
-
-        const archiveData = await archiveRes.json();
-        
-        // Buscar la partida específica en el listado mensual por su ID
-        const matchedGame = archiveData.games.find(g => g.url.endsWith(gameId) || g.url.includes(gameId));
-        if (!matchedGame || !matchedGame.pgn) {
-          throw new Error("No se encontró el PGN en el archivo del jugador.");
-        }
-        pgnText = matchedGame.pgn;
-      } else {
-        throw new Error("La estructura de la partida en Chess.com no devolvió información válida.");
-      }
-
-    } else if (urlInput.includes("lichess.org")) {
-      // Extraer ID de Lichess (8 caracteres alfanuméricos)
-      const match = urlInput.match(/lichess\.org\/([a-zA-Z0-9]{8})/);
-      const gameId = match ? match[1] : urlInput;
-
-      const response = await fetch(`https://lichess.org/game/export/${gameId}`);
-      if (!response.ok) throw new Error("No se pudo obtener la partida desde Lichess.");
-      pgnText = await response.text();
-
-    } else {
-      throw new Error("El enlace debe ser un enlace válido de Chess.com o Lichess.");
-    }
-
-    // 2. Inicializar el estado de la partida en chess.js
-    game.reset();
-    const cargado = game.load_pgn(pgnText);
-    
-    if (!cargado) {
-      throw new Error("El formato PGN recibido no pudo ser procesado por el tablero.");
-    }
-
-    // 3. Reconstruir el historial de jugadas
-    moveHistory = game.history({ verbose: true });
-    currentMoveIndex = -1; // Posición inicial antes del primer movimiento
-    game.reset(); // Reiniciar al inicio del tablero
-
-    // 4. Actualizar la vista del tablero
-    board.position(game.fen());
-    actualizarEstado();
-
-    aiOutput.innerText = "✅ Partida cargada con éxito. Navega con los botones de control para analizar jugada por jugada.";
-
-  } catch (error) {
-    console.error("Error al cargar la partida:", error);
-    alert(`Error al cargar la partida: ${error.message}`);
-    aiOutput.innerText = `❌ Error: ${error.message}`;
-  }
-}
-
-// Funciones auxiliares para actualizar el estado del tablero
-function actualizarEstado() {
-  document.getElementById('currentFen').innerText = game.fen();
-  
-  if (currentMoveIndex >= 0 && moveHistory[currentMoveIndex]) {
-    const move = moveHistory[currentMoveIndex];
-    document.getElementById('currentMove').innerText = `${move.san} (${move.color === 'w' ? 'Blancas' : 'Negras'})`;
-  } else {
-    document.getElementById('currentMove').innerText = "Inicio de la partida";
-  }
-}
-
-function irInicio() {
-  game.reset();
-  currentMoveIndex = -1;
-  board.position(game.fen());
-  actualizarEstado();
-}
-
-function anterior() {
-  if (currentMoveIndex < 0) return;
-  game.undo();
-  currentMoveIndex--;
-  board.position(game.fen());
-  actualizarEstado();
-}
-
-function siguiente() {
-  if (currentMoveIndex >= moveHistory.length - 1) return;
-  currentMoveIndex++;
-  const move = moveHistory[currentMoveIndex];
-  game.move(move.san);
-  board.position(game.fen());
-  actualizarEstado();
-}
-
-function irFin() {
-  game.reset();
-  for (let i = 0; i < moveHistory.length; i++) {
-    game.move(moveHistory[i].san);
-  }
-  currentMoveIndex = moveHistory.length - 1;
-  board.position(game.fen());
-  actualizarEstado();
-}
-          // Consulta a la API pública oficial de Chess.com
-          const response = await fetch(`https://api.chess.com/pub/game/${tipoPartida}/${gameId}`);
-          if (!response.ok) throw new Error("No se pudo obtener la partida desde la API de Chess.com.");
+      try {
+        if (urlInput.includes("chess.com")) {
+          const match = urlInput.match(/chess\.com\/game\/(live|daily)\/(\d+)/);
+          if (!match) {
+            throw new Error("Formato de URL no válido. Debe incluir '/game/live/ID' o '/game/daily/ID'.");
+          }
           
-          const data = await response.json();
-          pgnText = data.pgn || (data.game && data.game.pgn);
-          if (!pgnText) throw new Error("No se encontró el PGN en los datos devueltos por Chess.com.");
+          const tipoPartida = match[1];
+          const gameId = match[2];
+
+          // Consulta vía Proxy CORS
+          const callbackUrl = `https://www.chess.com/callback/${tipoPartida}/game/${gameId}`;
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(callbackUrl)}`;
+          
+          const callbackRes = await fetch(proxyUrl);
+          if (!callbackRes.ok) throw new Error("No se pudieron obtener los datos de la partida desde Chess.com.");
+          
+          const gameData = await callbackRes.json();
+          
+          if (gameData.game && gameData.game.pgn) {
+            pgnText = gameData.game.pgn;
+          } else if (gameData.game && gameData.game.pgnHeaders) {
+            const whiteUser = gameData.game.pgnHeaders.White.toLowerCase();
+            const dateParts = gameData.game.pgnHeaders.Date.split('.');
+            const year = dateParts[0];
+            const month = dateParts[1].padStart(2, '0');
+
+            const archiveUrl = `https://api.chess.com/pub/player/${whiteUser}/games/${year}/${month}`;
+            const archiveRes = await fetch(archiveUrl);
+            if (!archiveRes.ok) throw new Error("No se pudo acceder al archivo del jugador.");
+
+            const archiveData = await archiveRes.json();
+            const matchedGame = archiveData.games.find(g => g.url.endsWith(gameId) || g.url.includes(gameId));
+            if (!matchedGame || !matchedGame.pgn) {
+              throw new Error("No se encontró el PGN en el archivo del jugador.");
+            }
+            pgnText = matchedGame.pgn;
+          } else {
+            throw new Error("La estructura devuelta por Chess.com no contiene PGN.");
+          }
 
         } else if (urlInput.includes("lichess.org")) {
-          // Extraer ID de Lichess
           const match = urlInput.match(/lichess\.org\/([a-zA-Z0-9]{8})/);
           const gameId = match ? match[1] : urlInput;
 
           const response = await fetch(`https://lichess.org/game/export/${gameId}`);
-          if (!response.ok) throw new Error("No se pudo obtener la partida de Lichess.");
+          if (!response.ok) throw new Error("No se pudo obtener la partida desde Lichess.");
           pgnText = await response.text();
 
         } else {
           throw new Error("El enlace debe ser de Chess.com o Lichess.");
         }
 
-        // Cargar PGN en Chess.js
+        // Cargar en Chess.js
         game.reset();
         if (!game.load_pgn(pgnText)) {
-          throw new Error("No se pudo interpretar la notación PGN de la partida.");
+          throw new Error("No se pudo interpretar la notación PGN.");
         }
 
-        // Guardar historial de movimientos y resetear al inicio
         moveHistory = game.history({ verbose: true });
-        game.reset();
-        board.position(game.fen());
         currentMoveIndex = -1;
+        game.reset();
 
-        actualizarInfoTurno("-");
-        alert(`¡Partida cargada exitosamente! Se encontraron ${moveHistory.length} movimientos.`);
+        board.position(game.fen());
+        actualizarEstado();
 
-      } catch (err) {
-        alert("Error al cargar la partida: " + err.message);
+        aiOutput.innerText = "✅ Partida cargada con éxito. Usa los botones de navegación para revisar las jugadas.";
+
+      } catch (error) {
+        console.error("Error al cargar la partida:", error);
+        alert(`Error al cargar la partida: ${error.message}`);
+        aiOutput.innerText = `❌ Error: ${error.message}`;
       }
     }
 
-    // 2. Navegación en el Tablero
+    // 2. Funciones de Navegación del Tablero
+    function actualizarEstado() {
+      document.getElementById('currentFen').innerText = game.fen();
+      if (currentMoveIndex >= 0 && moveHistory[currentMoveIndex]) {
+        const move = moveHistory[currentMoveIndex];
+        document.getElementById('currentMove').innerText = `${move.san} (${move.color === 'w' ? 'Blancas' : 'Negras'})`;
+      } else {
+        document.getElementById('currentMove').innerText = "Inicio de la partida";
+      }
+    }
+
     function irInicio() {
       game.reset();
       currentMoveIndex = -1;
-      actualizarTablero();
+      board.position(game.fen());
+      actualizarEstado();
     }
 
     function anterior() {
-      if (currentMoveIndex >= 0) {
-        game.undo();
-        currentMoveIndex--;
-        actualizarTablero();
-      }
+      if (currentMoveIndex < 0) return;
+      game.undo();
+      currentMoveIndex--;
+      board.position(game.fen());
+      actualizarEstado();
     }
 
     function siguiente() {
-      if (currentMoveIndex < moveHistory.length - 1) {
-        currentMoveIndex++;
-        const move = moveHistory[currentMoveIndex];
-        game.move(move.san);
-        actualizarTablero();
-      }
+      if (currentMoveIndex >= moveHistory.length - 1) return;
+      currentMoveIndex++;
+      const move = moveHistory[currentMoveIndex];
+      game.move(move.san);
+      board.position(game.fen());
+      actualizarEstado();
     }
 
     function irFin() {
-      while (currentMoveIndex < moveHistory.length - 1) {
-        currentMoveIndex++;
-        game.move(moveHistory[currentMoveIndex].san);
+      game.reset();
+      for (let i = 0; i < moveHistory.length; i++) {
+        game.move(moveHistory[i].san);
       }
-      actualizarTablero();
-    }
-
-    function actualizarTablero() {
+      currentMoveIndex = moveHistory.length - 1;
       board.position(game.fen());
-      const lastMove = currentMoveIndex >= 0 ? moveHistory[currentMoveIndex].san : "-";
-      actualizarInfoTurno(lastMove);
+      actualizarEstado();
     }
 
-    function actualizarInfoTurno(lastMove) {
-      document.getElementById('currentMove').innerText = lastMove;
-      document.getElementById('currentFen').innerText = game.fen();
-    }
-
-    // 3. Consulta a la API de Gemini (Modelo gemini-3.8-flash)
+    // 3. Consulta Inteligente a Gemini con Fallback Multimodelo
     async function explicarJugadaConIA() {
-      const apiKey = document.getElementById('apiKey').value.trim();
-      const outputDiv = document.getElementById('aiOutput');
+      const inputKey = document.getElementById('apiKey').value.trim();
+      const apiKey = inputKey || API_KEY_DEFAULT;
 
       if (!apiKey) {
-        alert("Ingresa tu clave de API de Gemini.");
+        alert("Por favor ingresa tu clave API de Gemini.");
         return;
       }
 
+      const outputDiv = document.getElementById('aiOutput');
       const fenActual = game.fen();
       const ultimaJugada = currentMoveIndex >= 0 ? moveHistory[currentMoveIndex].san : "Posición Inicial";
       const turno = game.turn() === 'w' ? 'Blancas' : 'Negras';
-
-      outputDiv.innerText = "⏳ Analizando posición con Gemini...";
 
       const prompt = `Actúa como un Gran Maestro de ajedrez y entrenador pedagógico.
 Analiza la siguiente posición:
@@ -357,27 +273,49 @@ Por favor provee una explicación concisa y clara (máximo 3 párrafos cortos):
 2. ¿Hay piezas sin defender, casillas débiles o amenazas tácticas inmediatas?
 3. ¿Qué tipo de jugada o plan deberías buscar a continuación?`;
 
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
-        });
+      let ultimoError = "";
 
-        const data = await response.json();
+      // Intentar secuencialmente con los modelos disponibles hasta obtener respuesta
+      for (const modelo of MODELOS_IA) {
+        try {
+          outputDiv.innerText = `⏳ Analizando posición con Gemini (${modelo})...`;
 
-        if (data.error) {
-          throw new Error(data.error.message);
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }]
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.error) {
+            // Si el servidor de Google devuelve alta demanda (503/429), reintentamos con el siguiente modelo
+            if (data.error.message && (data.error.message.includes("high demand") || data.error.code === 503 || data.error.code === 429)) {
+              console.warn(`El modelo ${modelo} está con alta demanda. Probando siguiente modelo...`);
+              ultimoError = data.error.message;
+              continue;
+            }
+            throw new Error(data.error.message);
+          }
+
+          if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const textoExplicacion = data.candidates[0].content.parts[0].text;
+            outputDiv.innerText = textoExplicacion;
+            return; // Finalización exitosa
+          } else {
+            throw new Error("La API no devolvió texto en la respuesta.");
+          }
+
+        } catch (err) {
+          console.error(`Error con el modelo ${modelo}:`, err);
+          ultimoError = err.message;
         }
-
-        const textoExplicacion = data.candidates[0].content.parts[0].text;
-        outputDiv.innerText = textoExplicacion;
-
-      } catch (err) {
-        outputDiv.innerText = "❌ Error al conectar con la IA: " + err.message;
       }
+
+      // Si todos los modelos de la lista presentan alta demanda
+      outputDiv.innerText = `❌ Alta demanda temporal en los servidores de Google.\nDetalle del error: ${ultimoError}\n\nPor favor, vuelve a presionar el botón en unos segundos.`;
     }
   </script>
 </body>
