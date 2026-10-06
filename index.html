@@ -3,320 +3,337 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Analizador de Ajedrez con IA (Chess.com & Lichess)</title>
-  
-  <!-- CSS: Tailwind CSS y Chessboard.js -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Analizador de Ajedrez con IA Gemini</title>
+  <!-- Chessboard.js & Chess.js CDN -->
   <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-  
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
-    .board-container { width: 100%; max-width: 480px; margin: 0 auto; }
-  </style>
-</head>
-<body class="min-h-screen p-4 md:p-8">
-
-  <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-    
-    <!-- Columna Izquierda: Tablero y Carga de Partida -->
-    <div class="flex flex-col items-center gap-4 bg-slate-800 p-6 rounded-xl shadow-xl border border-slate-700">
-      <h1 class="text-2xl font-bold text-emerald-400">♟️ Chess AI Analyzer</h1>
-      
-      <!-- Entrada de URL (Chess.com o Lichess) -->
-      <div class="w-full flex flex-col gap-2">
-        <label class="text-xs text-slate-400">Enlace de la partida:</label>
-        <div class="flex gap-2">
-          <input type="text" id="gameUrl" 
-                 value="https://www.chess.com/game/live/184878669530" 
-                 placeholder="Ej: https://www.chess.com/game/live/... o https://lichess.org/..." 
-                 class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-          <button onclick="cargarPartida()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-medium text-sm transition">
-            Cargar
-          </button>
-        </div>
-      </div>
-
-      <!-- Tablero Interactivo -->
-      <div class="board-container">
-        <div id="board"></div>
-      </div>
-
-      <!-- Controles de Navegación -->
-      <div class="flex gap-2 md:gap-4 w-full justify-center">
-        <button onclick="irInicio()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-semibold text-sm">⏮ Inicio</button>
-        <button onclick="anterior()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-semibold text-sm">◀ Anterior</button>
-        <button onclick="siguiente()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-semibold text-sm">Siguiente ▶</button>
-        <button onclick="irFin()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-semibold text-sm">Fin ⏭</button>
-      </div>
-    </div>
-
-    <!-- Columna Derecha: Estado de Posición e Explicación IA -->
-    <div class="flex flex-col gap-6">
-      
-      <!-- Estado de la Posición -->
-      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
-        <h2 class="text-lg font-semibold text-slate-300 mb-2">Estado del Movimiento</h2>
-        <div class="text-sm space-y-2 text-slate-400">
-          <p><span class="font-bold text-slate-200">Jugada realizada:</span> <span id="currentMove" class="text-emerald-400 font-mono text-base font-bold">-</span></p>
-          <p><span class="font-bold text-slate-200">FEN actual:</span></p>
-          <p id="currentFen" class="font-mono text-xs bg-slate-900 p-2 rounded border border-slate-700 break-all text-slate-300">rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</p>
-        </div>
-      </div>
-
-      <!-- Panel de la API e IA -->
-      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl flex flex-col gap-4">
-        <h2 class="text-lg font-semibold text-slate-300">🤖 Explicación Táctica con Gemini</h2>
-        
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Clave API de Gemini:</label>
-          <input type="password" id="apiKey" 
-                 value="AQ.Ab8RN6KTGfOrdOaE-SFDmULLKu44GLID1KjR7Tv8LuHlkZ_SHw"
-                 placeholder="Pega tu clave de API aquí" 
-                 class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500">
-        </div>
-
-        <button onclick="explicarJugadaConIA()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-lg font-bold text-sm transition shadow-lg flex items-center justify-center gap-2">
-          ✨ Explicar esta posición con IA
-        </button>
-
-        <!-- Salida del Análisis -->
-        <div id="aiOutput" class="bg-slate-900 border border-slate-700 rounded-lg p-4 text-sm text-slate-300 min-h-[140px] leading-relaxed whitespace-pre-line">
-          Carga una partida, navega hasta una jugada y presiona el botón para recibir la explicación táctica de la posición.
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Scripts: jQuery, Chessboard.js, Chess.js -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1e1e24;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 { margin-bottom: 20px; color: #4caf50; }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      max-width: 1100px;
+      width: 100%;
+    }
+    .panel-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #board {
+      width: 450px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .controls {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    button:hover { background-color: #555; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .panel-right {
+      flex: 1;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    label { font-size: 0.9em; color: #aaa; }
+    input[type="text"], input[type="password"] {
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #444;
+      background-color: #2a2a32;
+      color: #fff;
+    }
+    .analysis-box {
+      background-color: #2a2a32;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 15px;
+      flex: 1;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.5;
+      font-size: 0.95em;
+      white-space: pre-wrap;
+    }
+    .status-badge {
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      margin-top: 5px;
+    }
+    .error { background-color: #5a1e1e; color: #ff9999; border: 1px solid #993333; }
+    .success { background-color: #1e5a22; color: #99ff99; border: 1px solid #339933; }
+    .info { background-color: #1e3a5a; color: #99ccff; border: 1px solid #336699; }
+  </style>
+</head>
+<body>
+
+  <h1>Analizador de Partidas Lichess + IA Gemini</h1>
+
+  <div class="container">
+    <div class="panel-left">
+      <div id="board"></div>
+      <div class="controls">
+        <button id="btnStart">⏮ Inicio</button>
+        <button id="btnPrev">◀ Anterior</button>
+        <button id="btnNext">Siguiente ▶</button>
+        <button id="btnEnd">Final ⏭</button>
+      </div>
+    </div>
+
+    <div class="panel-right">
+      <div class="input-group">
+        <label for="lichessId">ID de la Partida en Lichess (Ejemplo: <code>q72d2424</code>)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="lichessId" placeholder="Introduce el ID de Lichess" style="flex: 1;">
+          <button id="btnCargar">Cargar Partida</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="apiKey">Clave API de Gemini (Empieza con AIzaSy...)</label>
+        <input type="password" id="apiKey" placeholder="AIzaSy...">
+      </div>
+
+      <button id="btnExplicar" style="background-color: #2e7d32;" disabled>🤖 Explicar Jugada Actual con IA</button>
+
+      <div id="statusMessage" class="status-badge info">Estado: Listo. Carga una partida de Lichess para comenzar.</div>
+
+      <div class="analysis-box" id="analysisOutput">Aquí aparecerá el análisis de la IA para la jugada actual...</div>
+    </div>
+  </div>
 
   <script>
-    let board = null;
     let game = new Chess();
-    let moveHistory = [];
+    let board = null;
+    let movesHistory = [];
     let currentMoveIndex = -1;
 
-    // Lista priorizada de modelos para evitar bloqueos por alta demanda
-    const MODELOS_IA = [
-      'gemini-2.5-flash',
-      'gemini-1.5-flash',
-      'gemini-2.5-flash-lite'
-    ];
-
-    // Clave API por defecto integrada
-    const API_KEY_DEFAULT = "AQ.Ab8RN6KTGfOrdOaE-SFDmULLKu44GLID1KjR7Tv8LuHlkZ_SHw";
-
-    // Inicializar tablero visual al cargar la página
-    $(document).ready(function() {
-      board = Chessboard('board', {
-        position: 'start',
-        pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
-      });
+    // Inicializar Tablero
+    board = Chessboard('board', {
+      position: 'start',
+      pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
     });
 
-    // 1. Cargar Partida (Chess.com o Lichess)
-    async function cargarPartida() {
-      const urlInput = document.getElementById('gameUrl').value.trim();
-      if (!urlInput) return alert("Por favor ingresa un enlace de Chess.com o Lichess.");
-
-      const aiOutput = document.getElementById('aiOutput');
-      aiOutput.innerText = "⏳ Obteniendo PGN y cargando la partida...";
-
-      let pgnText = "";
-
-      try {
-        if (urlInput.includes("chess.com")) {
-          const match = urlInput.match(/chess\.com\/game\/(live|daily)\/(\d+)/);
-          if (!match) {
-            throw new Error("Formato de URL no válido. Debe incluir '/game/live/ID' o '/game/daily/ID'.");
-          }
-          
-          const tipoPartida = match[1];
-          const gameId = match[2];
-
-          // Consulta vía Proxy CORS
-          const callbackUrl = `https://www.chess.com/callback/${tipoPartida}/game/${gameId}`;
-          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(callbackUrl)}`;
-          
-          const callbackRes = await fetch(proxyUrl);
-          if (!callbackRes.ok) throw new Error("No se pudieron obtener los datos de la partida desde Chess.com.");
-          
-          const gameData = await callbackRes.json();
-          
-          if (gameData.game && gameData.game.pgn) {
-            pgnText = gameData.game.pgn;
-          } else if (gameData.game && gameData.game.pgnHeaders) {
-            const whiteUser = gameData.game.pgnHeaders.White.toLowerCase();
-            const dateParts = gameData.game.pgnHeaders.Date.split('.');
-            const year = dateParts[0];
-            const month = dateParts[1].padStart(2, '0');
-
-            const archiveUrl = `https://api.chess.com/pub/player/${whiteUser}/games/${year}/${month}`;
-            const archiveRes = await fetch(archiveUrl);
-            if (!archiveRes.ok) throw new Error("No se pudo acceder al archivo del jugador.");
-
-            const archiveData = await archiveRes.json();
-            const matchedGame = archiveData.games.find(g => g.url.endsWith(gameId) || g.url.includes(gameId));
-            if (!matchedGame || !matchedGame.pgn) {
-              throw new Error("No se encontró el PGN en el archivo del jugador.");
-            }
-            pgnText = matchedGame.pgn;
-          } else {
-            throw new Error("La estructura devuelta por Chess.com no contiene PGN.");
-          }
-
-        } else if (urlInput.includes("lichess.org")) {
-          const match = urlInput.match(/lichess\.org\/([a-zA-Z0-9]{8})/);
-          const gameId = match ? match[1] : urlInput;
-
-          const response = await fetch(`https://lichess.org/game/export/${gameId}`);
-          if (!response.ok) throw new Error("No se pudo obtener la partida desde Lichess.");
-          pgnText = await response.text();
-
-        } else {
-          throw new Error("El enlace debe ser de Chess.com o Lichess.");
-        }
-
-        // Cargar en Chess.js
-        game.reset();
-        if (!game.load_pgn(pgnText)) {
-          throw new Error("No se pudo interpretar la notación PGN.");
-        }
-
-        moveHistory = game.history({ verbose: true });
-        currentMoveIndex = -1;
-        game.reset();
-
-        board.position(game.fen());
-        actualizarEstado();
-
-        aiOutput.innerText = "✅ Partida cargada con éxito. Usa los botones de navegación para revisar las jugadas.";
-
-      } catch (error) {
-        console.error("Error al cargar la partida:", error);
-        alert(`Error al cargar la partida: ${error.message}`);
-        aiOutput.innerText = `❌ Error: ${error.message}`;
-      }
+    function setStatus(msg, type = 'info') {
+      const statusEl = document.getElementById('statusMessage');
+      statusEl.textContent = msg;
+      statusEl.className = `status-badge ${type}`;
     }
 
-    // 2. Funciones de Navegación del Tablero
-    function actualizarEstado() {
-      document.getElementById('currentFen').innerText = game.fen();
-      if (currentMoveIndex >= 0 && moveHistory[currentMoveIndex]) {
-        const move = moveHistory[currentMoveIndex];
-        document.getElementById('currentMove').innerText = `${move.san} (${move.color === 'w' ? 'Blancas' : 'Negras'})`;
-      } else {
-        document.getElementById('currentMove').innerText = "Inicio de la partida";
-      }
-    }
-
-    function irInicio() {
-      game.reset();
-      currentMoveIndex = -1;
-      board.position(game.fen());
-      actualizarEstado();
-    }
-
-    function anterior() {
-      if (currentMoveIndex < 0) return;
-      game.undo();
-      currentMoveIndex--;
-      board.position(game.fen());
-      actualizarEstado();
-    }
-
-    function siguiente() {
-      if (currentMoveIndex >= moveHistory.length - 1) return;
-      currentMoveIndex++;
-      const move = moveHistory[currentMoveIndex];
-      game.move(move.san);
-      board.position(game.fen());
-      actualizarEstado();
-    }
-
-    function irFin() {
-      game.reset();
-      for (let i = 0; i < moveHistory.length; i++) {
-        game.move(moveHistory[i].san);
-      }
-      currentMoveIndex = moveHistory.length - 1;
-      board.position(game.fen());
-      actualizarEstado();
-    }
-
-    // 3. Consulta Inteligente a Gemini con Fallback Multimodelo
-    async function explicarJugadaConIA() {
-      const inputKey = document.getElementById('apiKey').value.trim();
-      const apiKey = inputKey || API_KEY_DEFAULT;
-
-      if (!apiKey) {
-        alert("Por favor ingresa tu clave API de Gemini.");
+    // 1. CARGAR PARTIDA DE LICHESS CON FALLBACK
+    document.getElementById('btnCargar').addEventListener('click', async () => {
+      const rawInput = document.getElementById('lichessId').value.trim();
+      if (!rawInput) {
+        setStatus('Por favor introduce un ID o enlace de Lichess.', 'error');
         return;
       }
 
-      const outputDiv = document.getElementById('aiOutput');
-      const fenActual = game.fen();
-      const ultimaJugada = currentMoveIndex >= 0 ? moveHistory[currentMoveIndex].san : "Posición Inicial";
-      const turno = game.turn() === 'w' ? 'Blancas' : 'Negras';
+      // Extraer ID si pegaron la URL completa
+      const gameId = rawInput.replace('https://lichess.org/', '').split('/')[0].split('#')[0];
 
-      const prompt = `Actúa como un Gran Maestro de ajedrez y entrenador pedagógico.
-Analiza la siguiente posición:
-- FEN actual: ${fenActual}
-- Última jugada realizada: ${ultimaJugada}
-- Le toca jugar a: ${turno}
+      setStatus(`Cargando partida ${gameId} desde Lichess...`, 'info');
 
-Por favor provee una explicación concisa y clara (máximo 3 párrafos cortos):
-1. ¿Cuál es la idea o plan principal para las ${turno}?
-2. ¿Hay piezas sin defender, casillas débiles o amenazas tácticas inmediatas?
-3. ¿Qué tipo de jugada o plan deberías buscar a continuación?`;
+      let pgnData = null;
 
-      let ultimoError = "";
+      // Intento 1: Petición directa a la API de Lichess (Soporta CORS)
+      try {
+        const res = await fetch(`https://lichess.org/game/export/${gameId}?evals=true&clocks=false`);
+        if (res.ok) {
+          pgnData = await res.text();
+        }
+      } catch (err) {
+        console.warn('Petición directa a Lichess falló, intentando con proxy...', err);
+      }
 
-      // Intentar secuencialmente con los modelos disponibles hasta obtener respuesta
-      for (const modelo of MODELOS_IA) {
+      // Intento 2: Proxy de respaldo en caso de fallo
+      if (!pgnData) {
         try {
-          outputDiv.innerText = `⏳ Analizando posición con Gemini (${modelo})...`;
-
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }]
-            })
-          });
-
-          const data = await response.json();
-
-          if (data.error) {
-            // Si el servidor de Google devuelve alta demanda (503/429), reintentamos con el siguiente modelo
-            if (data.error.message && (data.error.message.includes("high demand") || data.error.code === 503 || data.error.code === 429)) {
-              console.warn(`El modelo ${modelo} está con alta demanda. Probando siguiente modelo...`);
-              ultimoError = data.error.message;
-              continue;
-            }
-            throw new Error(data.error.message);
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(`https://lichess.org/game/export/${gameId}?evals=true`)}`;
+          const res = await fetch(proxyUrl);
+          if (res.ok) {
+            pgnData = await res.text();
           }
-
-          if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-            const textoExplicacion = data.candidates[0].content.parts[0].text;
-            outputDiv.innerText = textoExplicacion;
-            return; // Finalización exitosa
-          } else {
-            throw new Error("La API no devolvió texto en la respuesta.");
-          }
-
         } catch (err) {
-          console.error(`Error con el modelo ${modelo}:`, err);
-          ultimoError = err.message;
+          console.error('Error en el proxy:', err);
         }
       }
 
-      // Si todos los modelos de la lista presentan alta demanda
-      outputDiv.innerText = `❌ Alta demanda temporal en los servidores de Google.\nDetalle del error: ${ultimoError}\n\nPor favor, vuelve a presionar el botón en unos segundos.`;
+      if (!pgnData) {
+        setStatus('Error al obtener la partida de Lichess. Verifica el ID o tu conexión a Internet.', 'error');
+        return;
+      }
+
+      // Cargar PGN en Chess.js
+      game.reset();
+      const loaded = game.load_pgn(pgnData);
+      if (!loaded) {
+        setStatus('El PGN obtenido no se pudo procesar correctamente.', 'error');
+        return;
+      }
+
+      movesHistory = game.history({ verbose: true });
+      game.reset();
+      board.position(game.fen());
+      currentMoveIndex = -1;
+
+      setStatus(`Partida cargada exitosamente. Total de jugadas: ${movesHistory.length}`, 'success');
+      document.getElementById('btnExplicar').disabled = false;
+    });
+
+    // NAUFRAGIO Y NAVEGACIÓN
+    function updatePosition(index) {
+      game.reset();
+      for (let i = 0; i <= index; i++) {
+        game.move(movesHistory[i]);
+      }
+      currentMoveIndex = index;
+      board.position(game.fen());
     }
+
+    document.getElementById('btnStart').addEventListener('click', () => {
+      game.reset();
+      currentMoveIndex = -1;
+      board.position(game.fen());
+    });
+
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      if (currentMoveIndex > 0) {
+        updatePosition(currentMoveIndex - 1);
+      } else if (currentMoveIndex === 0) {
+        game.reset();
+        currentMoveIndex = -1;
+        board.position(game.fen());
+      }
+    });
+
+    document.getElementById('btnNext').addEventListener('click', () => {
+      if (currentMoveIndex < movesHistory.length - 1) {
+        updatePosition(currentMoveIndex + 1);
+      }
+    });
+
+    document.getElementById('btnEnd').addEventListener('click', () => {
+      if (movesHistory.length > 0) {
+        updatePosition(movesHistory.length - 1);
+      }
+    });
+
+    // 2. EXPLICAR JUGADA CON IA GEMINI (CON MANEJO DE ERRORES DE RED)
+    document.getElementById('btnExplicar').addEventListener('click', async () => {
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const outputEl = document.getElementById('analysisOutput');
+
+      if (!apiKey) {
+        setStatus('Ingresa tu clave API de Google Gemini.', 'error');
+        return;
+      }
+
+      if (currentMoveIndex < 0) {
+        outputEl.textContent = 'Avanza al menos un movimiento para analizar la jugada.';
+        return;
+      }
+
+      const move = movesHistory[currentMoveIndex];
+      const fenAntes = (currentMoveIndex > 0) ? movesHistory[currentMoveIndex - 1].fen : 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const fenDespues = move.fen;
+
+      outputEl.textContent = '🤖 Analizando la posición con la IA... Por favor espera.';
+      setStatus('Enviando consulta a Gemini...', 'info');
+
+      const promptText = `Eres un Gran Maestro de Ajedrez. Analiza la siguiente jugada:
+- Posición previa (FEN): ${fenAntes}
+- Jugada realizada: ${move.color === 'w' ? 'Blancas' : 'Negras'} jugaron ${move.san} (de ${move.from} a ${move.to}).
+- Posición resultante (FEN): ${fenDespues}
+
+Por favor explica de forma didáctica:
+1. ¿Cuál es el propósito o la idea táctica/posicional detrás de esta jugada (${move.san})?
+2. ¿Qué piezas quedan amenazadas o defendidas?
+3. Breve recomendación para el oponente en la siguiente jugada.`;
+
+      // Modelo recomendado
+      const modelo = 'gemini-1.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }]
+          })
+        });
+
+        // Manejar respuestas con errores de API (400, 403, 429, etc.)
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          const detail = errBody.error ? errBody.error.message : response.statusText;
+          throw new Error(`Error API (${response.status}): ${detail}`);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (text) {
+          outputEl.textContent = text;
+          setStatus('Análisis generado correctamente.', 'success');
+        } else {
+          outputEl.textContent = 'La respuesta de la IA no contiene texto válido.';
+          setStatus('Respuesta vacía recibida.', 'error');
+        }
+
+      } catch (err) {
+        console.error('Error detallado:', err);
+
+        // Diagnóstico preciso del error
+        if (err.name === 'TypeError' && err.message.includes('fetch')) {
+          outputEl.textContent = `❌ ERROR DE RED ("Failed to fetch"):
+No se pudo conectar con los servidores de Google Gemini.
+
+Causas frecuentes:
+1. Tienes un bloqueador de anuncios (uBlock / AdBlock / Escudo de Brave) activo que bloquea la API de Google.
+2. Tu clave de API no tiene un formato válido (debe empezar con "AIzaSy...").
+3. Hay un problema temporal con tu conexión a Internet.`;
+          setStatus('Fallo de red o API bloqueada por el navegador.', 'error');
+        } else {
+          outputEl.textContent = `❌ ${err.message}`;
+          setStatus('Error en la llamada a la API.', 'error');
+        }
+      }
+    });
   </script>
 </body>
 </html>
