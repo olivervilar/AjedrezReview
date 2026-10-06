@@ -106,21 +106,146 @@
     });
 
     // 1. Cargar Partida (Chess.com o Lichess)
-    async function cargarPartida() {
-      const urlInput = document.getElementById('gameUrl').value.trim();
-      if (!urlInput) return alert("Por favor ingresa un enlace de Chess.com o Lichess.");
+async function cargarPartida() {
+  const urlInput = document.getElementById('gameUrl').value.trim();
+  if (!urlInput) return alert("Por favor ingresa un enlace de Chess.com o Lichess.");
 
-      let pgnText = "";
+  const aiOutput = document.getElementById('aiOutput');
+  aiOutput.innerText = "⏳ Obteniendo PGN y cargando la partida...";
 
-      try {
-        if (urlInput.includes("chess.com")) {
-          // Extraer tipo (live/daily) e ID de la partida de Chess.com
-          const match = urlInput.match(/chess\.com\/game\/(live|daily)\/(\d+)/);
-          if (!match) throw new Error("No se reconoció la URL de Chess.com. Asegúrate de incluir '/game/live/ID' o '/game/daily/ID'.");
-          
-          const tipoPartida = match[1];
-          const gameId = match[2];
+  let pgnText = "";
 
+  try {
+    if (urlInput.includes("chess.com")) {
+      // Extraer tipo (live o daily) e ID de la partida
+      const match = urlInput.match(/chess\.com\/game\/(live|daily)\/(\d+)/);
+      if (!match) {
+        throw new Error("Formato de URL no válido. Debe ser similar a:\nhttps://www.chess.com/game/live/184878669530");
+      }
+      
+      const tipoPartida = match[1]; // live o daily
+      const gameId = match[2];     // Ej: 184878669530
+
+      // Paso A: Obtener el callback de la partida mediante Proxy CORS para saber el usuario y la fecha
+      const callbackUrl = `https://www.chess.com/callback/${tipoPartida}/game/${gameId}`;
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(callbackUrl)}`;
+      
+      const callbackRes = await fetch(proxyUrl);
+      if (!callbackRes.ok) throw new Error("No se pudieron obtener los datos iniciales de la partida desde Chess.com.");
+      
+      const gameData = await callbackRes.json();
+      
+      // Si la respuesta del callback incluye directamente el PGN en los datos:
+      if (gameData.game && gameData.game.pgn) {
+        pgnText = gameData.game.pgn;
+      } else if (gameData.game && gameData.game.pgnHeaders) {
+        // Paso B: Si no está completo, buscamos en el archivo mensual del jugador
+        const whiteUser = gameData.game.pgnHeaders.White.toLowerCase();
+        const dateParts = gameData.game.pgnHeaders.Date.split('.'); // Formato "YYYY.MM.DD"
+        const year = dateParts[0];
+        const month = dateParts[1].padStart(2, '0');
+
+        // La PubAPI de Chess.com para archivos mensuales sí permite CORS directo
+        const archiveUrl = `https://api.chess.com/pub/player/${whiteUser}/games/${year}/${month}`;
+        const archiveRes = await fetch(archiveUrl);
+        if (!archiveRes.ok) throw new Error("No se pudo acceder al archivo de partidas del jugador.");
+
+        const archiveData = await archiveRes.json();
+        
+        // Buscar la partida específica en el listado mensual por su ID
+        const matchedGame = archiveData.games.find(g => g.url.endsWith(gameId) || g.url.includes(gameId));
+        if (!matchedGame || !matchedGame.pgn) {
+          throw new Error("No se encontró el PGN en el archivo del jugador.");
+        }
+        pgnText = matchedGame.pgn;
+      } else {
+        throw new Error("La estructura de la partida en Chess.com no devolvió información válida.");
+      }
+
+    } else if (urlInput.includes("lichess.org")) {
+      // Extraer ID de Lichess (8 caracteres alfanuméricos)
+      const match = urlInput.match(/lichess\.org\/([a-zA-Z0-9]{8})/);
+      const gameId = match ? match[1] : urlInput;
+
+      const response = await fetch(`https://lichess.org/game/export/${gameId}`);
+      if (!response.ok) throw new Error("No se pudo obtener la partida desde Lichess.");
+      pgnText = await response.text();
+
+    } else {
+      throw new Error("El enlace debe ser un enlace válido de Chess.com o Lichess.");
+    }
+
+    // 2. Inicializar el estado de la partida en chess.js
+    game.reset();
+    const cargado = game.load_pgn(pgnText);
+    
+    if (!cargado) {
+      throw new Error("El formato PGN recibido no pudo ser procesado por el tablero.");
+    }
+
+    // 3. Reconstruir el historial de jugadas
+    moveHistory = game.history({ verbose: true });
+    currentMoveIndex = -1; // Posición inicial antes del primer movimiento
+    game.reset(); // Reiniciar al inicio del tablero
+
+    // 4. Actualizar la vista del tablero
+    board.position(game.fen());
+    actualizarEstado();
+
+    aiOutput.innerText = "✅ Partida cargada con éxito. Navega con los botones de control para analizar jugada por jugada.";
+
+  } catch (error) {
+    console.error("Error al cargar la partida:", error);
+    alert(`Error al cargar la partida: ${error.message}`);
+    aiOutput.innerText = `❌ Error: ${error.message}`;
+  }
+}
+
+// Funciones auxiliares para actualizar el estado del tablero
+function actualizarEstado() {
+  document.getElementById('currentFen').innerText = game.fen();
+  
+  if (currentMoveIndex >= 0 && moveHistory[currentMoveIndex]) {
+    const move = moveHistory[currentMoveIndex];
+    document.getElementById('currentMove').innerText = `${move.san} (${move.color === 'w' ? 'Blancas' : 'Negras'})`;
+  } else {
+    document.getElementById('currentMove').innerText = "Inicio de la partida";
+  }
+}
+
+function irInicio() {
+  game.reset();
+  currentMoveIndex = -1;
+  board.position(game.fen());
+  actualizarEstado();
+}
+
+function anterior() {
+  if (currentMoveIndex < 0) return;
+  game.undo();
+  currentMoveIndex--;
+  board.position(game.fen());
+  actualizarEstado();
+}
+
+function siguiente() {
+  if (currentMoveIndex >= moveHistory.length - 1) return;
+  currentMoveIndex++;
+  const move = moveHistory[currentMoveIndex];
+  game.move(move.san);
+  board.position(game.fen());
+  actualizarEstado();
+}
+
+function irFin() {
+  game.reset();
+  for (let i = 0; i < moveHistory.length; i++) {
+    game.move(moveHistory[i].san);
+  }
+  currentMoveIndex = moveHistory.length - 1;
+  board.position(game.fen());
+  actualizarEstado();
+}
           // Consulta a la API pública oficial de Chess.com
           const response = await fetch(`https://api.chess.com/pub/game/${tipoPartida}/${gameId}`);
           if (!response.ok) throw new Error("No se pudo obtener la partida desde la API de Chess.com.");
