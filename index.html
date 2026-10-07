@@ -174,8 +174,9 @@
             </div>
             
             <div>
-                <label id="ui-pgn-label" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Paste PGN</label>
-                <textarea id="pgnInput" rows="3" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm font-mono resize-none" placeholder="1. e4 e5 2. Nf3 Nc6..."></textarea>
+                <label id="ui-pgn-label" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Paste PGN or Game Link</label>
+                <textarea id="pgnInput" rows="3" class="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm font-mono resize-none" placeholder="1. e4 e5... OR https://lichess.org/xxx"></textarea>
+                <p id="ui-pgn-help" class="text-xs text-gray-500 dark:text-gray-400 mt-2">Supports Lichess and Chess.com links. Note: Due to restrictions, Chess.com may require pasting the PGN text directly.</p>
             </div>
             
             <button id="analyzeBtn" onclick="startAnalysis()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/20 transition transform active:scale-95 flex items-center justify-center gap-2">
@@ -218,9 +219,9 @@
 const translations = {
     en: {
         title: "AI Chess Analyzer", selectLang: "Select Language", apikey: "Gemini API Key",
-        pgnLabel: "Paste PGN", analyzeBtn: "Analyze Game", historyTitle: "Move History",
+        pgnLabel: "Paste PGN or Game Link", pgnHelp: "Supports Lichess and Chess.com links (e.g. https://lichess.org/...). Note: For Chess.com, you must paste the PGN directly if the link fails.", analyzeBtn: "Analyze Game", historyTitle: "Move History",
         historyEmpty: "Load a PGN to see moves.", aiTitle: "Gemini AI Analysis",
-        aiEmpty: "Analysis will appear here after evaluation...", aiLoading: "Analyzing moves with Stockfish & Gemini...",
+        aiEmpty: "Analysis will appear here after evaluation...", aiLoading: "Analyzing moves with Stockfish & Gemini...", fetchingMsg: "Fetching game from link...",
         legTitle: "Evaluation Legend", legBrill: "Brilliant", legGreat: "Great", legBest: "Best", 
         legExc: "Excellent", legGood: "Good", legInacc: "Inaccuracy", legMist: "Mistake", legBlund: "Blunder",
         helpTitle: "How to get a Gemini API Key", helpDesc: "To use the AI analysis feature, you need a free API key from Google.",
@@ -232,9 +233,9 @@ const translations = {
     },
     es: {
         title: "Analizador de Ajedrez IA", selectLang: "Selecciona Idioma", apikey: "Clave API de Gemini",
-        pgnLabel: "Pega el PGN aquí", analyzeBtn: "Analizar Partida", historyTitle: "Historial de Movimientos",
+        pgnLabel: "Pega el PGN o el Enlace", pgnHelp: "Soporta enlaces de Lichess y Chess.com (ej: https://lichess.org/...). Nota: Por seguridad, Chess.com requiere que pegues el PGN (texto) directamente.", analyzeBtn: "Analizar Partida", historyTitle: "Historial de Movimientos",
         historyEmpty: "Carga un PGN para ver los movimientos.", aiTitle: "Análisis IA de Gemini",
-        aiEmpty: "El análisis aparecerá aquí...", aiLoading: "Analizando con Stockfish y Gemini...",
+        aiEmpty: "El análisis aparecerá aquí...", aiLoading: "Analizando con Stockfish y Gemini...", fetchingMsg: "Obteniendo partida desde el enlace...",
         legTitle: "Leyenda de Evaluación", legBrill: "Brillante", legGreat: "Genial", legBest: "Mejor", 
         legExc: "Excelente", legGood: "Bueno", legInacc: "Imprecisión", legMist: "Error", legBlund: "Grave",
         helpTitle: "Cómo obtener una Clave API de Gemini", helpDesc: "Para usar el análisis de IA, necesitas una clave gratuita de Google.",
@@ -246,9 +247,9 @@ const translations = {
     },
     fr: {
         title: "Analyseur d'Échecs IA", selectLang: "Choisir la Langue", apikey: "Clé API Gemini",
-        pgnLabel: "Coller le PGN", analyzeBtn: "Analyser la Partie", historyTitle: "Historique des Coups",
+        pgnLabel: "Coller le PGN ou le Lien", pgnHelp: "Supporte Lichess et Chess.com. Note: Chess.com nécessite souvent de coller le texte PGN directement.", analyzeBtn: "Analyser la Partie", historyTitle: "Historique des Coups",
         historyEmpty: "Chargez un PGN pour voir les coups.", aiTitle: "Analyse IA Gemini",
-        aiEmpty: "L'analyse apparaîtra ici...", aiLoading: "Analyse avec Stockfish et Gemini...",
+        aiEmpty: "L'analyse apparaîtra ici...", aiLoading: "Analyse avec Stockfish et Gemini...", fetchingMsg: "Récupération de la partie...",
         legTitle: "Légende d'Évaluation", legBrill: "Brillant", legGreat: "Superbe", legBest: "Meilleur", 
         legExc: "Excellent", legGood: "Bon", legInacc: "Imprécision", legMist: "Erreur", legBlund: "Gaffe",
         helpTitle: "Comment obtenir une clé API Gemini", helpDesc: "Pour utiliser l'IA, vous avez besoin d'une clé gratuite de Google.",
@@ -260,9 +261,9 @@ const translations = {
     },
     de: {
         title: "KI-Schachanalysator", selectLang: "Sprache wählen", apikey: "Gemini API-Schlüssel",
-        pgnLabel: "PGN einfügen", analyzeBtn: "Partie Analysieren", historyTitle: "Zugverlauf",
+        pgnLabel: "PGN oder Link einfügen", pgnHelp: "Unterstützt Lichess und Chess.com. Hinweis: Bei Chess.com müssen Sie den PGN-Text direkt einfügen.", analyzeBtn: "Partie Analysieren", historyTitle: "Zugverlauf",
         historyEmpty: "Laden Sie eine PGN.", aiTitle: "Gemini KI-Analyse",
-        aiEmpty: "Die Analyse erscheint hier...", aiLoading: "Analysiere mit Stockfish & Gemini...",
+        aiEmpty: "Die Analyse erscheint hier...", aiLoading: "Analysiere mit Stockfish & Gemini...", fetchingMsg: "Lade Spiel aus Link...",
         legTitle: "Bewertungslegende", legBrill: "Brillant", legGreat: "Großartig", legBest: "Bester", 
         legExc: "Ausgezeichnet", legGood: "Gut", legInacc: "Ungenauigkeit", legMist: "Fehler", legBlund: "Patzer",
         helpTitle: "Wie man einen Gemini API-Schlüssel erhält", helpDesc: "Für die KI-Analyse benötigen Sie einen kostenlosen Google-Schlüssel.",
@@ -297,6 +298,7 @@ function setLanguage(lang) {
     document.getElementById('ui-title').innerText = t.title;
     document.getElementById('ui-apikey-label').childNodes[0].nodeValue = t.apikey + " ";
     document.getElementById('ui-pgn-label').innerText = t.pgnLabel;
+    if(document.getElementById('ui-pgn-help')) document.getElementById('ui-pgn-help').innerText = t.pgnHelp;
     document.getElementById('ui-analyze-btn').innerText = t.analyzeBtn;
     document.getElementById('ui-history-title').innerText = t.historyTitle;
     if(moveHistoryData.length === 0) document.getElementById('ui-history-empty').innerText = t.historyEmpty;
@@ -485,12 +487,42 @@ function setMove(index) {
     highlightCurrentMove();
 }
 
+async function getPgnFromInput(input) {
+    input = input.trim();
+    
+    // Check if input is a URL
+    if (input.startsWith('http') || input.includes('lichess.org') || input.includes('chess.com')) {
+        
+        // Detect Lichess URL
+        const lichessMatch = input.match(/(?:https?:\/\/)?(?:www\.)?lichess\.org\/([a-zA-Z0-9]{8,12})/);
+        if (lichessMatch) {
+            const gameId = lichessMatch[1].substring(0, 8);
+            const response = await fetch(`https://lichess.org/game/export/${gameId}?clocks=false&evals=false`);
+            if (response.ok) {
+                return await response.text();
+            } else {
+                throw new Error("No se pudo obtener la partida de Lichess. Verifica que el enlace sea correcto.");
+            }
+        }
+        
+        // Detect Chess.com URL
+        const chessComMatch = input.match(/(?:https?:\/\/)?(?:www\.)?chess\.com\//);
+        if (chessComMatch) {
+            throw new Error("Chess.com bloquea las descargas directas por enlace. Por favor, copia el texto PGN de la partida en Chess.com y pégalo aquí.");
+        }
+        
+        throw new Error("Enlace no soportado. Por favor pega el texto PGN directamente.");
+    }
+    
+    return input; // Si no es un enlace, asume que ya es un texto PGN
+}
+
 async function startAnalysis() {
-    const pgn = document.getElementById('pgnInput').value.trim();
+    const rawInput = document.getElementById('pgnInput').value.trim();
     const apiKey = document.getElementById('apiKeyInput').value.trim();
     
-    if (!pgn) {
-        alert("Please paste a PGN string.");
+    if (!rawInput) {
+        alert("Please paste a PGN or Game Link.");
         return;
     }
     if (!apiKey) {
@@ -504,21 +536,27 @@ async function startAnalysis() {
     document.getElementById('loadingIndicator').classList.remove('hidden');
     document.getElementById('loadingIndicator').classList.add('flex');
 
-    // Parse and evaluate game moves visually
-    await evaluateGame(pgn);
-
-    // Prepare history string for AI Prompt
-    let historyStr = "";
-    moveHistoryData.forEach((m, idx) => {
-        if(idx % 2 === 0) historyStr += `${(idx/2)+1}. `;
-        historyStr += `${m.san}(${m.category}) `;
-    });
-
-    const promptTemplate = translations[currentLang].prompt;
-    const finalPrompt = promptTemplate.replace('{history}', historyStr);
-
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // Handle URL or PGN logic
+        document.getElementById('ui-ai-loading').innerText = translations[currentLang].fetchingMsg || "Fetching game data...";
+        const pgn = await getPgnFromInput(rawInput);
+
+        // Parse and evaluate game moves visually
+        document.getElementById('ui-ai-loading').innerText = translations[currentLang].aiLoading;
+        await evaluateGame(pgn);
+
+        // Prepare history string for AI Prompt
+        let historyStr = "";
+        moveHistoryData.forEach((m, idx) => {
+            if(idx % 2 === 0) historyStr += `${(idx/2)+1}. `;
+            historyStr += `${m.san}(${m.category}) `;
+        });
+
+        const promptTemplate = translations[currentLang].prompt;
+        const finalPrompt = promptTemplate.replace('{history}', historyStr);
+
+        // Cambiado el modelo a gemini-1.5-pro para mejor compatibilidad con v1beta
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
